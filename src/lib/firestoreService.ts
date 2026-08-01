@@ -38,17 +38,33 @@ function friendlyFirebaseError(error: unknown): string {
   return value?.message || String(error);
 }
 
+function removeUndefinedFields<T extends Record<string, any>>(obj: T): Record<string, any> {
+  const cleaned: Record<string, any> = {};
+  for (const [key, value] of Object.entries(obj)) {
+    if (value !== undefined) {
+      if (value !== null && typeof value === 'object' && value.constructor === Object) {
+        cleaned[key] = removeUndefinedFields(value);
+      } else {
+        cleaned[key] = value;
+      }
+    }
+  }
+  return cleaned;
+}
+
 export async function saveStudentSubmissionToFirestore(data: FirestoreStudentData): Promise<FirestoreResult> {
   if (!isFirebaseConfigured || !db) return { success: true, skipped: true };
   if (!data.submission_id) return { success: false, error: '제출 ID가 없습니다.' };
 
   try {
     const ownerUid = await ensureFirebaseAuth();
-    await setDoc(doc(db, 'submissions', data.submission_id), {
+    const payload = removeUndefinedFields({
       ...data,
       ownerUid,
       updatedAt: serverTimestamp(),
-    }, { merge: true });
+    });
+
+    await setDoc(doc(db, 'submissions', data.submission_id), payload, { merge: true });
     return { success: true };
   } catch (error) {
     console.error('Firestore 저장 실패:', error);
