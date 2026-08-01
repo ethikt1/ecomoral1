@@ -1,0 +1,1058 @@
+<script>
+/**
+ * EcoMoral Lab Front-end Client Logic (GAS JavaScript.html)
+ */
+
+// Global State
+let appState = {
+  view: 'ROLE_SELECT', // ROLE_SELECT, STUDENT_FLOW, TEACHER_DASHBOARD
+  student: {
+    studentCode: '',
+    scenarioId: 'SCENARIO_FESTIVAL_01',
+    scenarioTitle: '학교 축제 일회용품 vs 다회용기 사용 딜레마',
+    step: 1, // 1 to 10
+    submissionId: '',
+    attemptNumber: 1,
+    consentChecked: false,
+    preAnswers: {},
+    preScores: { sensitivity: 0, judgment: 0, motivation: 0, action: 0 },
+    recommendedActivity: 'sensitivity',
+    selectedActivity: 'sensitivity',
+    reflectionAnswer1: '',
+    reflectionAnswer2: '',
+    ifPlan: '',
+    thenPlan: '',
+    postAnswers: {},
+    postScores: { sensitivity: 0, judgment: 0, motivation: 0, action: 0 }
+  },
+  teacher: {
+    authenticated: false,
+    dataSource: 'ACTUAL', // ACTUAL or SYNTHETIC
+    dashboardData: null,
+    loading: false
+  }
+};
+
+// Assessment Questions Data
+const ASSESSMENT_QUESTIONS = [
+  { id: 1, comp: 'sensitivity', label: '도덕적 민감성', text: '일상생활에서 기후위기와 환경 오염 문제가 나, 이웃, 주변 생태계에 미칠 위험을 쉽게 감지할 수 있다.' },
+  { id: 2, comp: 'sensitivity', label: '도덕적 민감성', text: '나의 편리를 위한 행동 선택이 청소 노동자, 야생 동식물, 미래 세대 등 영향받는 존재들에게 미칠 부정적 결과를 주의 깊게 살펴본다.' },
+  { id: 3, comp: 'sensitivity', label: '도덕적 민감성', text: '기후위기와 환경 오염 문제가 단순한 개인 취향이나 불편의 문제를 넘어, 우리 공동체가 해결해야 할 핵심 도덕적 이슈임을 인지한다.' },
+  { id: 4, comp: 'judgment', label: '도덕적 판단', text: '당장의 편리함이나 경제적 이익보다 환경 보전과 생태적 책임을 우선하는 것이 도덕적으로 타당하다고 본다.' },
+  { id: 5, comp: 'judgment', label: '도덕적 판단', text: '환경을 보호하기 위해 다소의 번거로움과 비용을 감수하는 것이 정의롭고 지속가능한 선택임을 합리적으로 판단할 수 있다.' },
+  { id: 6, comp: 'judgment', label: '도덕적 판단', text: '단기적 편의와 장기적 지속가능 가치 사이에서 무엇이 올바른 방향인지 객관적 윤리 기준으로 구분한다.' },
+  { id: 7, comp: 'motivation', label: '도덕적 동기화', text: '주변의 다수 사람들이 환경 파괴적 행동을 편하게 하더라도, 나 스스로 환경 가치를 최우선으로 두고 실천하려는 내적 의지가 있다.' },
+  { id: 8, comp: 'motivation', label: '도덕적 동기화', text: '환경 보호를 실천하는 과정에서 약간의 불편함이나 유혹이 생겨도 도덕적 자부심과 양심을 지키고자 노력한다.' },
+  { id: 9, comp: 'motivation', label: '도덕적 동기화', text: '나의 작은 환경 실천이 우리 학교와 사회의 도덕적 수준을 높이는 데 기여한다는 강한 책임감과 보람을 느낀다.' },
+  { id: 10, comp: 'action', label: '도덕적 행동', text: '일상생활에서 텀블러/다회용기 지참, 분리배출, 에너지 절약 등을 실제로 지속해서 실천한다.' },
+  { id: 11, comp: 'action', label: '도덕적 행동', text: '올바른 쓰레기 분리수거, 자원 재활용 및 환경 보호 수칙을 끝까지 철저히 이행한다.' },
+  { id: 12, comp: 'action', label: '도덕적 행동', text: '주변 사람들이 환경 오염 행동을 할 때 환경 보전 행동을 친절하게 제안하고 함께 실천하도록 이끈다.' }
+];
+
+const LEARNING_ACTIVITIES = {
+  sensitivity: {
+    id: 'sensitivity',
+    title: '2050 지구 미래 섹터별 기사 조사 & 영향받는 존재 지도',
+    label: '도덕적 민감성',
+    q1: '교육 활동 결과물 공유 링크 (URL)',
+    q2: '활동 성찰 및 소감 (느낀 점 및 배운 점)'
+  },
+  judgment: {
+    id: 'judgment',
+    title: 'Survive the Century 윤리적 의사결정 게임 & 판단',
+    label: '도덕적 판단',
+    q1: '교육 활동 결과물 공유 링크 (URL)',
+    q2: '활동 성찰 및 소감 (느낀 점 및 배운 점)'
+  },
+  motivation: {
+    id: 'motivation',
+    title: '환경 도덕 가치 전달 카드뉴스 제작',
+    label: '도덕적 동기화',
+    q1: '교육 활동 결과물 공유 링크 (URL)',
+    q2: '활동 성찰 및 소감 (느낀 점 및 배운 점)'
+  },
+  action: {
+    id: 'action',
+    title: '일상 속 실천 가능 환경 행동 기록 및 도전',
+    label: '도덕적 행동',
+    q1: '교육 활동 결과물 공유 링크 (URL)',
+    q2: '활동 성찰 및 소감 (느낀 점 및 배운 점)'
+  }
+};
+
+// Initialize App on DOM Load or immediately if ready
+function initApp() {
+  loadLocalSession();
+  renderApp();
+}
+
+if (document.readyState === 'complete' || document.readyState === 'interactive') {
+  initApp();
+} else {
+  document.addEventListener('DOMContentLoaded', initApp);
+}
+
+function saveLocalSession() {
+  try {
+    localStorage.setItem('ecomoral_student_session', JSON.stringify(appState.student));
+  } catch(e) {}
+}
+
+function loadLocalSession() {
+  try {
+    const saved = localStorage.getItem('ecomoral_student_session');
+    if (saved) {
+      const parsed = JSON.parse(saved);
+      if (parsed && parsed.studentCode) {
+        appState.student = parsed;
+      }
+    }
+  } catch(e) {}
+}
+
+function clearLocalSession() {
+  try {
+    localStorage.removeItem('ecomoral_student_session');
+  } catch(e) {}
+}
+
+// Client Helper for google.script.run
+function callServer(funcName, ...args) {
+  return new Promise((resolve, reject) => {
+    if (typeof google !== 'undefined' && google.script && google.script.run) {
+      google.script.run
+        .withSuccessHandler(resolve)
+        .withFailureHandler(reject)[funcName](...args);
+    } else {
+      // Mock Fallback for local browser testing
+      console.warn('google.script.run unavailable. Running simulator mode for:', funcName);
+      setTimeout(() => {
+        resolve(mockServerResponse(funcName, ...args));
+      }, 400);
+    }
+  });
+}
+
+function mockServerResponse(funcName, ...args) {
+  if (funcName === 'verifyTeacherPassword') {
+    return { success: true };
+  }
+  if (funcName === 'getStudentProgress') {
+    const code = args[0];
+    return {
+      success: true,
+      isNew: true,
+      student: {
+        submission_id: 'SUB_' + code + '_' + Date.now(),
+        student_code: code,
+        scenario_id: args[1],
+        started_at: new Date().toLocaleString(),
+        status: 'IN_PROGRESS',
+        attempt_number: 1
+      }
+    };
+  }
+  if (funcName === 'savePreAssessment') {
+    const payload = args[0];
+    const scores = calcClientScores(payload.answers);
+    const rec = getLowestComp(scores);
+    return { success: true, scores, recommendedActivity: rec };
+  }
+  if (funcName === 'saveLearningActivity') {
+    return { success: true };
+  }
+  if (funcName === 'savePostAssessment') {
+    const payload = args[0];
+    const postScores = calcClientScores(payload.answers);
+    return { success: true, postScores, preScores: appState.student.preScores };
+  }
+  if (funcName === 'getTeacherDashboard') {
+    return {
+      success: true,
+      data: {
+        dataSource: args[0],
+        totalSubmissions: 24,
+        completedCount: 20,
+        completionRate: 83,
+        preAverages: { sensitivity: 2.8, judgment: 3.1, motivation: 2.5, action: 2.2 },
+        postAverages: { sensitivity: 4.1, judgment: 4.3, motivation: 3.8, action: 3.6 },
+        averageGains: { sensitivity: 1.3, judgment: 1.2, motivation: 1.3, action: 1.4 },
+        recommendedDistribution: { sensitivity: 6, judgment: 3, motivation: 7, action: 8 },
+        selectedDistribution: { sensitivity: 5, judgment: 4, motivation: 8, action: 7 },
+        matchRate: 88,
+        records: []
+      }
+    };
+  }
+  if (funcName === 'generateSyntheticData') {
+    return { success: true, message: '가상 학생 60명 데이터 생성이 완료되었습니다.' };
+  }
+  return { success: true };
+}
+
+function calcClientScores(answers) {
+  const getAvg = (qIds) => {
+    let sum = 0, cnt = 0;
+    qIds.forEach(id => {
+      if (answers[id]) { sum += Number(answers[id]); cnt++; }
+    });
+    return cnt > 0 ? Math.round((sum / cnt) * 10) / 10 : 0;
+  };
+  return {
+    sensitivity: getAvg([1, 2, 3]),
+    judgment: getAvg([4, 5, 6]),
+    motivation: getAvg([7, 8, 9]),
+    action: getAvg([10, 11, 12])
+  };
+}
+
+function getLowestComp(scores) {
+  let minK = 'sensitivity';
+  let minV = scores[minK];
+  ['judgment', 'motivation', 'action'].forEach(k => {
+    if (scores[k] < minV) { minV = scores[k]; minK = k; }
+  });
+  return minK;
+}
+
+// UI Render Router
+function renderApp() {
+  const container = document.getElementById('app-root');
+  if (!container) return;
+
+  if (appState.view === 'ROLE_SELECT') {
+    container.innerHTML = renderRoleSelect();
+  } else if (appState.view === 'STUDENT_FLOW') {
+    container.innerHTML = renderStudentStep();
+  } else if (appState.view === 'TEACHER_DASHBOARD') {
+    container.innerHTML = renderTeacherDashboard();
+  }
+}
+
+// Role Selection Screen
+function renderRoleSelect() {
+  return `
+    <div class="min-h-screen flex flex-col items-center justify-center p-4">
+      <div class="w-full max-w-md app-card p-6 text-center shadow-lg">
+        <div class="w-16 h-16 bg-emerald-100 rounded-full flex items-center justify-center mx-auto mb-4 text-emerald-600">
+          <svg class="w-8 h-8" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M5 3v4M3 5h4M6 17v4m-2-2h4m5-16l2.286 6.857L21 12l-5.714 2.143L13 21l-2.286-6.857L5 12l5.714-2.143L13 3z"/></svg>
+        </div>
+        <h1 class="text-2xl font-bold text-slate-800 mb-1">EcoMoral Lab</h1>
+        <p class="text-sm text-slate-500 mb-6">반응형 환경 도덕성 진단 및 맞춤형 학습 플랫폼</p>
+
+        ${appState.student.submissionId ? `
+          <div class="mb-6 p-4 bg-emerald-50 border border-emerald-200 rounded-lg text-left">
+            <p class="text-xs font-semibold text-emerald-800 mb-1">💡 이전 학습 진행 기록 발견</p>
+            <p class="text-xs text-emerald-700">학습코드: <strong>${appState.student.studentCode}</strong> (단계: ${appState.student.step}/10)</p>
+            <button onclick="resumeSavedStudent()" class="mt-3 w-full bg-emerald-600 hover:bg-emerald-700 text-white text-xs font-semibold py-2 px-3 rounded-md transition-all-200">
+              이어서 학습하기 →
+            </button>
+          </div>
+        ` : ''}
+
+        <div class="space-y-3">
+          <button onclick="startStudentFlow()" class="w-full bg-emerald-600 hover:bg-emerald-700 text-white font-semibold py-3 px-4 rounded-xl shadow-sm transition-all-200 flex items-center justify-center gap-2">
+            <span>🌱 학생 학습 시작하기</span>
+          </button>
+          <button onclick="promptTeacherPassword()" class="w-full bg-white hover:bg-slate-50 border border-slate-300 text-slate-700 font-semibold py-3 px-4 rounded-xl shadow-sm transition-all-200 flex items-center justify-center gap-2">
+            <span>🔒 교사용 대시보드</span>
+          </button>
+        </div>
+
+        <div class="mt-8 text-xs text-slate-400 border-t pt-4">
+          Rest의 도덕적 행동 4구성요소 (민감성·판단·동기화·행동) 기반 학습
+        </div>
+      </div>
+    </div>
+  `;
+}
+
+function startStudentFlow() {
+  appState.view = 'STUDENT_FLOW';
+  renderApp();
+}
+
+function resumeSavedStudent() {
+  appState.view = 'STUDENT_FLOW';
+  renderApp();
+}
+
+function promptTeacherPassword() {
+  const pwd = prompt('교사 전용 비밀번호를 입력하세요:');
+  if (!pwd) return;
+
+  callServer('verifyTeacherPassword', pwd)
+    .then(res => {
+      if (res.success) {
+        appState.teacher.authenticated = true;
+        appState.view = 'TEACHER_DASHBOARD';
+        loadDashboardData();
+      } else {
+        alert(res.message || '비밀번호가 올바르지 않습니다.');
+      }
+    })
+    .catch(err => {
+      alert('비밀번호 검증 오류: ' + err.message);
+    });
+}
+
+// Student Steps Router
+function renderStudentStep() {
+  const step = appState.student.step;
+
+  return `
+    <div class="min-h-screen bg-slate-50 pb-12">
+      <!-- Header -->
+      <header class="bg-white border-b sticky top-0 z-30 shadow-xs">
+        <div class="max-w-xl mx-auto px-4 py-3 flex items-center justify-between">
+          <div class="flex items-center gap-2" onclick="goHomeConfirm()">
+            <span class="text-xl">🌱</span>
+            <span class="font-bold text-slate-800">EcoMoral Lab</span>
+          </div>
+          <div class="text-xs text-slate-500 bg-slate-100 px-2.5 py-1 rounded-full">
+            코드: <strong>${appState.student.studentCode || '미입력'}</strong>
+          </div>
+        </div>
+        <!-- Progress Bar -->
+        <div class="w-full bg-slate-100 h-1.5">
+          <div class="bg-emerald-500 h-1.5 bar-fill" style="width: ${(step / 10) * 100}%"></div>
+        </div>
+      </header>
+
+      <main class="max-w-xl mx-auto px-4 pt-6">
+        <div class="mb-4 flex items-center justify-between text-xs text-slate-500">
+          <span>단계 ${step} / 10</span>
+          <span>${getStepTitle(step)}</span>
+        </div>
+
+        ${getStepHtml(step)}
+      </main>
+    </div>
+  `;
+}
+
+function getStepTitle(step) {
+  const titles = [
+    '', '익명 학습코드 입력', '환경 딜레마 확인', '사전 진단 설문',
+    '진단 결과 확인', '맞춤 학습 선택', '서술형 활동 수행',
+    '행동계획 작성', '사후 진단 설문', '변화 확인', '완료'
+  ];
+  return titles[step] || '';
+}
+
+function getStepHtml(step) {
+  switch (step) {
+    case 1: return renderStep1();
+    case 2: return renderStep2();
+    case 3: return renderStep3();
+    case 4: return renderStep4();
+    case 5: return renderStep5();
+    case 6: return renderStep6();
+    case 7: return renderStep7();
+    case 8: return renderStep8();
+    case 9: return renderStep9();
+    case 10: return renderStep10();
+    default: return renderStep1();
+  }
+}
+
+// Step 1: Student Code & Privacy Notice
+function renderStep1() {
+  return `
+    <div class="app-card p-6 shadow-sm">
+      <h2 class="text-lg font-bold text-slate-800 mb-2">익명 학습코드 입력</h2>
+      <p class="text-xs text-slate-600 mb-4 leading-relaxed">
+        사전·사후 진단 결과를 안전하게 연결하기 위한 <strong>익명 학습코드</strong>를 생성하여 입력해주세요.
+      </p>
+
+      <div class="bg-amber-50 border border-amber-200 rounded-lg p-3 text-xs text-amber-800 mb-5">
+        🔒 <strong>개인정보 보호 안내</strong><br/>
+        • 이름, 학번, 이메일, 전화번호 등 <strong>실제 개인정보는 절대 입력 금지</strong>합니다.<br/>
+        • 영문과 숫자를 조합한 <strong>4~12자리 코드</strong>만 허용됩니다. (예: green2026, eco77)
+      </div>
+
+      <div class="space-y-4">
+        <div>
+          <label class="block text-xs font-semibold text-slate-700 mb-1">익명 학습코드 (영문/숫자 4~12자)</label>
+          <input type="text" id="input-student-code" value="${appState.student.studentCode}" placeholder="예: ecomoral2026" maxlength="12" class="w-full p-3 text-sm border border-slate-300 rounded-lg uppercase">
+        </div>
+
+        <div class="flex items-start gap-2 pt-2">
+          <input type="checkbox" id="check-consent" ${appState.student.consentChecked ? 'checked' : ''} class="mt-0.5 rounded text-emerald-600">
+          <label for="check-consent" class="text-xs text-slate-600 leading-snug">
+            개인정보가 포함되지 않은 익명 코드를 사용하며, 응답 데이터가 환경 도덕성 학습 진단 목적 연구에 사용됨에 동의합니다.
+          </label>
+        </div>
+
+        <button onclick="submitStep1()" class="w-full mt-4 bg-emerald-600 hover:bg-emerald-700 text-white font-semibold py-3 rounded-xl transition-all-200 shadow-sm">
+          다음 단계로 (딜레마 확인) →
+        </button>
+      </div>
+    </div>
+  `;
+}
+
+function submitStep1() {
+  const rawCode = document.getElementById('input-student-code').value;
+  const cleanCode = rawCode.trim().replace(/[^a-zA-Z0-9]/g, '').toUpperCase();
+  const consent = document.getElementById('check-consent').checked;
+
+  if (cleanCode.length < 4 || cleanCode.length > 12) {
+    alert('학습코드는 영문과 숫자를 조합한 4~12자리여야 합니다.');
+    return;
+  }
+  if (!consent) {
+    alert('개인정보 수집 및 학습 진행 동의에 체크해주세요.');
+    return;
+  }
+
+  appState.student.studentCode = cleanCode;
+  appState.student.consentChecked = true;
+
+  callServer('getStudentProgress', cleanCode, appState.student.scenarioId)
+    .then(res => {
+      if (res.success) {
+        appState.student.submissionId = res.student.submission_id;
+        appState.student.attemptNumber = res.student.attempt_number;
+        appState.student.step = 2;
+        saveLocalSession();
+        renderApp();
+      } else {
+        alert(res.message);
+      }
+    });
+}
+
+// Step 2: Dilemma Scenario
+function renderStep2() {
+  return `
+    <div class="app-card p-6 shadow-sm">
+      <div class="inline-block px-2.5 py-1 bg-emerald-100 text-emerald-800 text-xs font-semibold rounded-full mb-3">
+        환경 딜레마 시나리오
+      </div>
+      <h2 class="text-lg font-bold text-slate-800 mb-3">${appState.student.scenarioTitle}</h2>
+
+      <div class="bg-slate-50 border border-slate-200 rounded-xl p-4 text-sm text-slate-700 leading-relaxed mb-6 space-y-3">
+        <p>
+          "학교 축제에서 일회용 컵과 접시를 사용하면 준비가 편리하고 비용도 적게 듭니다. 반면 다회용기를 사용하면 설거지와 반납 관리가 필요해 번거롭지만 쓰레기를 획기적으로 줄일 수 있습니다."
+        </p>
+        <p>
+          학생회는 다가오는 축제 부스 운영 시 어떤 방식을 선택해야 할지 열띤 논의를 진행하고 있습니다. 여러분이라면 어떤 윤리적 기준과 가치관에 따라 판단하시겠습니까?
+        </p>
+      </div>
+
+      <button onclick="nextStep(3)" class="w-full bg-emerald-600 hover:bg-emerald-700 text-white font-semibold py-3 rounded-xl transition-all-200 shadow-sm">
+        사전 진단 설문 시작하기 →
+      </button>
+    </div>
+  `;
+}
+
+// Step 3: Pre Assessment Survey (12 Items)
+function renderStep3() {
+  return `
+    <div class="app-card p-6 shadow-sm">
+      <h2 class="text-lg font-bold text-slate-800 mb-1">사전 환경 도덕성 진단</h2>
+      <p class="text-xs text-slate-500 mb-5">다음 12개 문항에 대해 자신과 가장 가까운 점수를 선택해 주세요. (1점: 전혀 그렇지 않다 ~ 5점: 매우 그렇다)</p>
+
+      <form id="pre-form" onsubmit="event.preventDefault(); submitStep3();" class="space-y-6">
+        ${ASSESSMENT_QUESTIONS.map((q, idx) => `
+          <div class="border-b border-slate-100 pb-4">
+            <div class="flex items-center gap-2 mb-2">
+              <span class="text-xs font-bold text-emerald-700 bg-emerald-50 px-2 py-0.5 rounded">Q${idx + 1} (${q.label})</span>
+            </div>
+            <p class="text-xs font-medium text-slate-800 mb-3 leading-snug">${q.text}</p>
+            <div class="grid grid-cols-5 gap-1 text-center">
+              ${[1,2,3,4,5].map(score => `
+                <label class="cursor-pointer border rounded-lg py-2 transition-all-200 flex flex-col items-center hover:bg-emerald-50">
+                  <input type="radio" name="q_${q.id}" value="${score}" ${appState.student.preAnswers[q.id] == score ? 'checked' : ''} required class="mb-1 text-emerald-600">
+                  <span class="text-xs font-semibold text-slate-700">${score}점</span>
+                </label>
+              `).join('')}
+            </div>
+          </div>
+        `).join('')}
+
+        <button type="submit" class="w-full bg-emerald-600 hover:bg-emerald-700 text-white font-semibold py-3 rounded-xl transition-all-200 shadow-sm">
+          사전 진단 제출 및 결과 보기 →
+        </button>
+      </form>
+    </div>
+  `;
+}
+
+function submitStep3() {
+  const answers = {};
+  ASSESSMENT_QUESTIONS.forEach(q => {
+    const checked = document.querySelector(`input[name="q_${q.id}"]:checked`);
+    if (checked) answers[q.id] = parseInt(checked.value, 10);
+  });
+
+  if (Object.keys(answers).length < 12) {
+    alert('12개 모든 문항에 응답해 주셔야 합니다.');
+    return;
+  }
+
+  appState.student.preAnswers = answers;
+
+  callServer('savePreAssessment', {
+    submission_id: appState.student.submissionId,
+    student_code: appState.student.studentCode,
+    scenario_id: appState.student.scenarioId,
+    attempt_number: appState.student.attemptNumber,
+    answers: answers
+  }).then(res => {
+    if (res.success) {
+      appState.student.preScores = res.scores;
+      appState.student.recommendedActivity = res.recommendedActivity;
+      appState.student.selectedActivity = res.recommendedActivity; // default match
+      appState.student.step = 4;
+      saveLocalSession();
+      renderApp();
+    } else {
+      alert(res.message);
+    }
+  });
+}
+
+// Step 4: Pre Assessment Results
+function renderStep4() {
+  const scores = appState.student.preScores;
+  const rec = appState.student.recommendedActivity;
+  const labels = { sensitivity: '도덕적 민감성', judgment: '도덕적 판단', motivation: '도덕적 동기화', action: '도덕적 행동' };
+
+  return `
+    <div class="app-card p-6 shadow-sm">
+      <h2 class="text-lg font-bold text-slate-800 mb-1">사전 진단 결과</h2>
+      <p class="text-xs text-slate-500 mb-5">Rest의 도덕적 행동 4구성요소별 진단 평균 점수입니다.</p>
+
+      <div class="space-y-4 mb-6">
+        ${Object.keys(scores).map(key => {
+          const score = scores[key];
+          const isRec = key === rec;
+          return `
+            <div class="p-3.5 border rounded-xl ${isRec ? 'bg-amber-50/70 border-amber-200' : 'bg-white border-slate-200'}">
+              <div class="flex items-center justify-between text-xs mb-1.5">
+                <div class="flex items-center gap-2">
+                  <span class="font-bold text-slate-800">${labels[key]}</span>
+                  ${isRec ? `<span class="badge-recommended text-[10px] px-2 py-0.5 rounded-full font-bold">진단 추천</span>` : ''}
+                </div>
+                <span class="font-extrabold text-slate-900">${score} / 5.0 점</span>
+              </div>
+              <div class="w-full bg-slate-100 rounded-full h-2.5 overflow-hidden">
+                <div class="${isRec ? 'bg-amber-500' : 'bg-emerald-500'} h-2.5 rounded-full" style="width: ${(score/5)*100}%"></div>
+              </div>
+            </div>
+          `;
+        }).join('')}
+      </div>
+
+      <div class="bg-emerald-50 border border-emerald-200 rounded-xl p-4 text-xs text-emerald-800 mb-6">
+        💡 <strong>맞춤 학습 추천</strong><br/>
+        진단 결과 가장 보완이 필요한 영역은 <strong>[${labels[rec]}]</strong> 영역입니다. 추천 활동을 통해 환경 도덕성 역량을 한 단계 강화해보세요!
+      </div>
+
+      <button onclick="nextStep(5)" class="w-full bg-emerald-600 hover:bg-emerald-700 text-white font-semibold py-3 rounded-xl transition-all-200 shadow-sm">
+        맞춤 학습활동 선택하기 →
+      </button>
+    </div>
+  `;
+}
+
+// Step 5: Custom Activity Selection
+function renderStep5() {
+  const rec = appState.student.recommendedActivity;
+  const currentSel = appState.student.selectedActivity;
+
+  return `
+    <div class="app-card p-6 shadow-sm">
+      <h2 class="text-lg font-bold text-slate-800 mb-1">맞춤 학습활동 선택</h2>
+      <p class="text-xs text-slate-500 mb-5">진단 결과 추천 활동 및 네 가지 학습활동 중 수행할 활동을 선택해주세요.</p>
+
+      <div class="space-y-3 mb-6">
+        ${Object.keys(LEARNING_ACTIVITIES).map(key => {
+          const act = LEARNING_ACTIVITIES[key];
+          const isRec = key === rec;
+          const isSelected = key === currentSel;
+
+          return `
+            <div onclick="selectActivity('${key}')" class="cursor-pointer p-4 rounded-xl border-2 transition-all-200 ${
+              isSelected ? 'border-emerald-600 bg-emerald-50/60 shadow-xs' : 'border-slate-200 bg-white hover:border-slate-300'
+            }">
+              <div class="flex items-center justify-between mb-1">
+                <div class="flex items-center gap-2">
+                  <span class="text-xs font-bold text-emerald-700 bg-white px-2 py-0.5 border border-emerald-200 rounded">${act.label}</span>
+                  <h3 class="text-sm font-bold text-slate-800">${act.title}</h3>
+                </div>
+                <div class="flex gap-1">
+                  ${isRec ? `<span class="badge-recommended text-[10px] px-2 py-0.5 rounded-full font-bold">진단 추천</span>` : ''}
+                  ${isSelected ? `<span class="badge-selected text-[10px] px-2 py-0.5 rounded-full font-bold">직접 선택</span>` : ''}
+                </div>
+              </div>
+            </div>
+          `;
+        }).join('')}
+      </div>
+
+      <button onclick="nextStep(6)" class="w-full bg-emerald-600 hover:bg-emerald-700 text-white font-semibold py-3 rounded-xl transition-all-200 shadow-sm">
+        선택한 활동 작성하러 가기 →
+      </button>
+    </div>
+  `;
+}
+
+function selectActivity(key) {
+  appState.student.selectedActivity = key;
+  renderApp();
+}
+
+// Step 6: Reflection Essay Writing
+function renderStep6() {
+  const actKey = appState.student.selectedActivity;
+  const act = LEARNING_ACTIVITIES[actKey];
+
+  return `
+    <div class="app-card p-6 shadow-sm">
+      <div class="inline-block px-2.5 py-1 bg-emerald-100 text-emerald-800 text-xs font-semibold rounded-full mb-2">
+        서술형 학습활동
+      </div>
+      <h2 class="text-lg font-bold text-slate-800 mb-1">${act.title}</h2>
+      <p class="text-xs text-slate-500 mb-5">${act.label} 역량 강화를 위한 진솔한 생각을 작성해주세요.</p>
+
+      <form id="reflection-form" onsubmit="event.preventDefault(); submitStep6();" class="space-y-5">
+        <div>
+          <label class="block text-xs font-bold text-slate-800 mb-1.5 leading-snug">Q1. ${act.q1}</label>
+          <textarea id="ref-q1" rows="3" required class="w-full p-3 text-xs border border-slate-300 rounded-xl" placeholder="내용을 성실하게 적어주세요...">${appState.student.reflectionAnswer1 || ''}</textarea>
+        </div>
+
+        <div>
+          <label class="block text-xs font-bold text-slate-800 mb-1.5 leading-snug">Q2. ${act.q2}</label>
+          <textarea id="ref-q2" rows="3" required class="w-full p-3 text-xs border border-slate-300 rounded-xl" placeholder="내용을 성실하게 적어주세요...">${appState.student.reflectionAnswer2 || ''}</textarea>
+        </div>
+
+        <button type="submit" class="w-full bg-emerald-600 hover:bg-emerald-700 text-white font-semibold py-3 rounded-xl transition-all-200 shadow-sm">
+          다음 단계 (If–Then 행동계획) →
+        </button>
+      </form>
+    </div>
+  `;
+}
+
+function submitStep6() {
+  const q1 = document.getElementById('ref-q1').value.trim();
+  const q2 = document.getElementById('ref-q2').value.trim();
+
+  if (q1.length < 5 || q2.length < 5) {
+    alert('질문에 대해 5자 이상 성실하게 답변해주세요.');
+    return;
+  }
+
+  appState.student.reflectionAnswer1 = q1;
+  appState.student.reflectionAnswer2 = q2;
+  appState.student.step = 7;
+  saveLocalSession();
+  renderApp();
+}
+
+// Step 7: If-Then Action Plan
+function renderStep7() {
+  return `
+    <div class="app-card p-6 shadow-sm">
+      <div class="inline-block px-2.5 py-1 bg-emerald-100 text-emerald-800 text-xs font-semibold rounded-full mb-2">
+        실천 약속
+      </div>
+      <h2 class="text-lg font-bold text-slate-800 mb-1">If–Then 환경 행동계획 작성</h2>
+      <p class="text-xs text-slate-500 mb-5">구체적인 구애 상황(If)과 이에 대응할 구체적 행동(Then)을 설정하세요.</p>
+
+      <form onsubmit="event.preventDefault(); submitStep7();" class="space-y-5">
+        <div class="p-4 bg-slate-50 border border-slate-200 rounded-xl space-y-4">
+          <div>
+            <label class="block text-xs font-bold text-emerald-800 mb-1">IF (만약 어떤 유혹이나 상황이 발생하면)</label>
+            <input type="text" id="input-if" required value="${appState.student.ifPlan || ''}" placeholder="예: 학교 축제 부스에서 일회용 컵을 제공받을 때" class="w-full p-3 text-xs border border-slate-300 rounded-lg bg-white">
+          </div>
+
+          <div>
+            <label class="block text-xs font-bold text-emerald-800 mb-1">THEN (나는 이렇게 환경적 행동을 실천하겠다)</label>
+            <input type="text" id="input-then" required value="${appState.student.thenPlan || ''}" placeholder="예: 준비해간 텀블러에 음료를 받고 친구에게도 다회용기 사용을 권유하겠다" class="w-full p-3 text-xs border border-slate-300 rounded-lg bg-white">
+          </div>
+        </div>
+
+        <button type="submit" class="w-full bg-emerald-600 hover:bg-emerald-700 text-white font-semibold py-3 rounded-xl transition-all-200 shadow-sm">
+          행동계획 저장 후 사후 진단으로 →
+        </button>
+      </form>
+    </div>
+  `;
+}
+
+function submitStep7() {
+  const ifP = document.getElementById('input-if').value.trim();
+  const thenP = document.getElementById('input-then').value.trim();
+
+  if (ifP.length < 3 || thenP.length < 3) {
+    alert('If 및 Then 계획을 성실하게 작성해주세요.');
+    return;
+  }
+
+  appState.student.ifPlan = ifP;
+  appState.student.thenPlan = thenP;
+
+  callServer('saveLearningActivity', {
+    submission_id: appState.student.submissionId,
+    recommended_activity: appState.student.recommendedActivity,
+    selected_activity: appState.student.selectedActivity,
+    reflection_answer_1: appState.student.reflectionAnswer1,
+    reflection_answer_2: appState.student.reflectionAnswer2,
+    if_plan: ifP,
+    then_plan: thenP
+  }).then(res => {
+    if (res.success) {
+      appState.student.step = 8;
+      saveLocalSession();
+      renderApp();
+    } else {
+      alert(res.message);
+    }
+  });
+}
+
+// Step 8: Post Assessment Survey
+function renderStep8() {
+  return `
+    <div class="app-card p-6 shadow-sm">
+      <h2 class="text-lg font-bold text-slate-800 mb-1">사후 환경 도덕성 진단</h2>
+      <p class="text-xs text-slate-500 mb-5">학습 활동 수행 후 변화된 나 자신의 인식과 도덕성 수준을 진단해주세요.</p>
+
+      <form id="post-form" onsubmit="event.preventDefault(); submitStep8();" class="space-y-6">
+        ${ASSESSMENT_QUESTIONS.map((q, idx) => `
+          <div class="border-b border-slate-100 pb-4">
+            <div class="flex items-center gap-2 mb-2">
+              <span class="text-xs font-bold text-emerald-700 bg-emerald-50 px-2 py-0.5 rounded">Q${idx + 1} (${q.label})</span>
+            </div>
+            <p class="text-xs font-medium text-slate-800 mb-3 leading-snug">${q.text}</p>
+            <div class="grid grid-cols-5 gap-1 text-center">
+              ${[1,2,3,4,5].map(score => `
+                <label class="cursor-pointer border rounded-lg py-2 transition-all-200 flex flex-col items-center hover:bg-emerald-50">
+                  <input type="radio" name="post_q_${q.id}" value="${score}" ${appState.student.postAnswers[q.id] == score ? 'checked' : ''} required class="mb-1 text-emerald-600">
+                  <span class="text-xs font-semibold text-slate-700">${score}점</span>
+                </label>
+              `).join('')}
+            </div>
+          </div>
+        `).join('')}
+
+        <button type="submit" class="w-full bg-emerald-600 hover:bg-emerald-700 text-white font-semibold py-3 rounded-xl transition-all-200 shadow-sm">
+          최종 결과 및 성장 확인하기 →
+        </button>
+      </form>
+    </div>
+  `;
+}
+
+function submitStep8() {
+  const answers = {};
+  ASSESSMENT_QUESTIONS.forEach(q => {
+    const checked = document.querySelector(`input[name="post_q_${q.id}"]:checked`);
+    if (checked) answers[q.id] = parseInt(checked.value, 10);
+  });
+
+  if (Object.keys(answers).length < 12) {
+    alert('12개 모든 문항에 응답해 주셔야 합니다.');
+    return;
+  }
+
+  appState.student.postAnswers = answers;
+
+  callServer('savePostAssessment', {
+    submission_id: appState.student.submissionId,
+    student_code: appState.student.studentCode,
+    answers: answers
+  }).then(res => {
+    if (res.success) {
+      appState.student.postScores = res.postScores;
+      appState.student.step = 9;
+      saveLocalSession();
+      renderApp();
+    } else {
+      alert(res.message);
+    }
+  });
+}
+
+// Step 9: Pre vs Post Change Analysis
+function renderStep9() {
+  const pre = appState.student.preScores;
+  const post = appState.student.postScores;
+  const labels = { sensitivity: '도덕적 민감성', judgment: '도덕적 판단', motivation: '도덕적 동기화', action: '도덕적 행동' };
+
+  return `
+    <div class="app-card p-6 shadow-sm">
+      <div class="text-center mb-6">
+        <span class="text-3xl mb-2 inline-block">🎉</span>
+        <h2 class="text-xl font-bold text-slate-800">사전–사후 역량 성과 비교</h2>
+        <p class="text-xs text-slate-500">학습 활동 전후 환경 도덕성 변화 결과입니다.</p>
+      </div>
+
+      <div class="space-y-4 mb-6">
+        ${Object.keys(pre).map(key => {
+          const preV = pre[key];
+          const postV = post[key];
+          const gain = Math.round((postV - preV) * 10) / 10;
+          return `
+            <div class="p-4 border border-slate-200 rounded-xl bg-slate-50/50">
+              <div class="flex justify-between items-center text-xs mb-2">
+                <span class="font-bold text-slate-800">${labels[key]}</span>
+                <span class="font-bold ${gain >= 0 ? 'text-emerald-600' : 'text-slate-500'}">
+                  ${gain >= 0 ? `+${gain}` : gain} 점 향상
+                </span>
+              </div>
+              <div class="grid grid-cols-2 gap-2 text-xs">
+                <div class="bg-white p-2 border rounded-lg text-center">
+                  <span class="text-slate-400 block text-[10px]">사전 점수</span>
+                  <span class="font-extrabold text-slate-700 text-sm">${preV}</span>
+                </div>
+                <div class="bg-emerald-50 p-2 border border-emerald-200 rounded-lg text-center">
+                  <span class="text-emerald-600 block text-[10px]">사후 점수</span>
+                  <span class="font-extrabold text-emerald-800 text-sm">${postV}</span>
+                </div>
+              </div>
+            </div>
+          `;
+        }).join('')}
+      </div>
+
+      <button onclick="nextStep(10)" class="w-full bg-emerald-600 hover:bg-emerald-700 text-white font-semibold py-3 rounded-xl transition-all-200 shadow-sm">
+        최종 제출 완료하기 →
+      </button>
+    </div>
+  `;
+}
+
+// Step 10: Submission Completion Card
+function renderStep10() {
+  return `
+    <div class="app-card p-6 text-center shadow-sm">
+      <div class="w-16 h-16 bg-emerald-100 text-emerald-600 rounded-full flex items-center justify-center mx-auto mb-4 text-2xl">
+        ✓
+      </div>
+      <h2 class="text-xl font-bold text-slate-800 mb-2">학습 제출 완료!</h2>
+      <p class="text-xs text-slate-600 mb-6 leading-relaxed">
+        환경 도덕성 학습과 진단을 성공적으로 마쳤습니다.<br/>
+        작성하신 If–Then 행동계획을 지속적으로 실천해 보세요!
+      </p>
+
+      <div class="bg-slate-50 border rounded-xl p-4 text-left text-xs space-y-2 mb-6">
+        <div><strong>익명 학습코드:</strong> ${appState.student.studentCode}</div>
+        <div><strong>제출 ID:</strong> ${appState.student.submissionId}</div>
+        <div><strong>시도 횟수:</strong> ${appState.student.attemptNumber}회차</div>
+      </div>
+
+      <button onclick="resetStudentFlow()" class="w-full bg-slate-800 hover:bg-slate-900 text-white font-semibold py-3 rounded-xl transition-all-200">
+        첫 화면으로 돌아가기
+      </button>
+    </div>
+  `;
+}
+
+function nextStep(s) {
+  appState.student.step = s;
+  saveLocalSession();
+  renderApp();
+}
+
+function goHomeConfirm() {
+  if (confirm('첫 화면으로 돌아가시겠습니까? 현재 진행 내역은 저장됩니다.')) {
+    appState.view = 'ROLE_SELECT';
+    renderApp();
+  }
+}
+
+function resetStudentFlow() {
+  clearLocalSession();
+  appState.student = {
+    studentCode: '',
+    scenarioId: 'SCENARIO_FESTIVAL_01',
+    scenarioTitle: '학교 축제 일회용품 vs 다회용기 사용 딜레마',
+    step: 1,
+    submissionId: '',
+    attemptNumber: 1,
+    consentChecked: false,
+    preAnswers: {},
+    preScores: { sensitivity: 0, judgment: 0, motivation: 0, action: 0 },
+    recommendedActivity: 'sensitivity',
+    selectedActivity: 'sensitivity',
+    reflectionAnswer1: '',
+    reflectionAnswer2: '',
+    ifPlan: '',
+    thenPlan: '',
+    postAnswers: {},
+    postScores: { sensitivity: 0, judgment: 0, motivation: 0, action: 0 }
+  };
+  appState.view = 'ROLE_SELECT';
+  renderApp();
+}
+
+// Teacher Dashboard Render Logic
+function renderTeacherDashboard() {
+  const dash = appState.teacher.dashboardData;
+  const source = appState.teacher.dataSource;
+
+  return `
+    <div class="min-h-screen bg-slate-100 pb-12">
+      <!-- Top Banner -->
+      <header class="bg-slate-900 text-white border-b sticky top-0 z-30 shadow-md">
+        <div class="max-w-5xl mx-auto px-4 py-3 flex items-center justify-between">
+          <div class="flex items-center gap-2">
+            <span class="text-xl">📊</span>
+            <span class="font-bold">EcoMoral Lab 교사용 대시보드</span>
+          </div>
+          <button onclick="logoutTeacher()" class="text-xs bg-slate-800 hover:bg-slate-700 text-slate-300 px-3 py-1.5 rounded-lg border border-slate-700">
+            나가기
+          </button>
+        </div>
+
+        <!-- Data Source Indicator Banner -->
+        <div class="py-2 px-4 text-center text-xs font-bold ${
+          source === 'ACTUAL' ? 'bg-emerald-600 text-white' : 'bg-purple-600 text-white'
+        }">
+          ${source === 'ACTUAL' ? '🟢 현재 화면: [실제 학생 DB] 데이터 조회 중 (EcoMoral_Actual_DB)' : '🟣 현재 화면: [가상 연습 DB] 데이터 조회 중 (EcoMoral_Synthetic_DB)'}
+        </div>
+      </header>
+
+      <main class="max-w-5xl mx-auto px-4 pt-6">
+        <!-- Data Source Controls -->
+        <div class="app-card p-4 mb-6 flex flex-wrap items-center justify-between gap-3">
+          <div class="flex items-center gap-2">
+            <span class="text-xs font-bold text-slate-700">데이터 소스 선택:</span>
+            <button onclick="switchDataSource('ACTUAL')" class="text-xs font-bold py-1.5 px-3 rounded-lg transition-all-200 ${
+              source === 'ACTUAL' ? 'bg-emerald-600 text-white shadow-xs' : 'bg-slate-100 text-slate-600 hover:bg-slate-200'
+            }">
+              실제 학생 데이터
+            </button>
+            <button onclick="switchDataSource('SYNTHETIC')" class="text-xs font-bold py-1.5 px-3 rounded-lg transition-all-200 ${
+              source === 'SYNTHETIC' ? 'bg-purple-600 text-white shadow-xs' : 'bg-slate-100 text-slate-600 hover:bg-slate-200'
+            }">
+              가상 연습 데이터
+            </button>
+          </div>
+
+          <div class="flex items-center gap-2">
+            ${source === 'SYNTHETIC' ? `
+              <button onclick="promptGenerateSynthetic()" class="text-xs font-bold bg-purple-700 hover:bg-purple-800 text-white px-3 py-2 rounded-lg transition-all-200 shadow-xs">
+                ⚡ 가상 학생 60명 생성
+              </button>
+            ` : ''}
+            <button onclick="downloadCsv()" class="text-xs font-bold bg-slate-800 hover:bg-slate-900 text-white px-3 py-2 rounded-lg transition-all-200 shadow-xs">
+              📥 CSV 다운로드
+            </button>
+          </div>
+        </div>
+
+        ${!dash ? `
+          <div class="text-center py-12 text-slate-500">데이터를 불러오는 중입니다...</div>
+        ` : `
+          <!-- Summary Cards Grid -->
+          <div class="grid grid-cols-2 md:grid-cols-4 gap-3 mb-6">
+            <div class="app-card p-4 text-center">
+              <span class="text-xs font-semibold text-slate-500 block">총 응답 학생 수</span>
+              <span class="text-2xl font-extrabold text-slate-800">${dash.totalSubmissions}명</span>
+            </div>
+            <div class="app-card p-4 text-center">
+              <span class="text-xs font-semibold text-slate-500 block">학습 완료율</span>
+              <span class="text-2xl font-extrabold text-emerald-600">${dash.completionRate}%</span>
+            </div>
+            <div class="app-card p-4 text-center">
+              <span class="text-xs font-semibold text-slate-500 block">평균 향상도</span>
+              <span class="text-2xl font-extrabold text-blue-600">+${dash.averageGains.sensitivity}</span>
+            </div>
+            <div class="app-card p-4 text-center">
+              <span class="text-xs font-semibold text-slate-500 block">추천-선택 일치율</span>
+              <span class="text-2xl font-extrabold text-amber-600">${dash.matchRate}%</span>
+            </div>
+          </div>
+
+          <!-- Component Averages Table -->
+          <div class="app-card p-5 mb-6">
+            <h3 class="text-sm font-bold text-slate-800 mb-3">4구성요소별 사전 vs 사후 평균 비교</h3>
+            <div class="overflow-x-auto">
+              <table class="w-full text-xs text-left border-collapse">
+                <thead>
+                  <tr class="bg-slate-50 border-b border-slate-200">
+                    <th class="p-2.5 font-bold">구성요소</th>
+                    <th class="p-2.5 font-bold">사전 평균</th>
+                    <th class="p-2.5 font-bold">사후 평균</th>
+                    <th class="p-2.5 font-bold">평균 향상도</th>
+                  </tr>
+                </thead>
+                <tbody>
+                  ${[
+                    { name: '도덕적 민감성', pre: dash.preAverages.sensitivity, post: dash.postAverages.sensitivity, gain: dash.averageGains.sensitivity },
+                    { name: '도덕적 판단', pre: dash.preAverages.judgment, post: dash.postAverages.judgment, gain: dash.averageGains.judgment },
+                    { name: '도덕적 동기화', pre: dash.preAverages.motivation, post: dash.postAverages.motivation, gain: dash.averageGains.motivation },
+                    { name: '도덕적 행동', pre: dash.preAverages.action, post: dash.postAverages.action, gain: dash.averageGains.action }
+                  ].map(row => `
+                    <tr class="border-b border-slate-100 hover:bg-slate-50">
+                      <td class="p-2.5 font-semibold text-slate-800">${row.name}</td>
+                      <td class="p-2.5 text-slate-600">${row.pre} 점</td>
+                      <td class="p-2.5 text-emerald-600 font-bold">${row.post} 점</td>
+                      <td class="p-2.5 text-blue-600 font-bold">+${row.gain} 점</td>
+                    </tr>
+                  `).join('')}
+                </tbody>
+              </table>
+            </div>
+          </div>
+        `}
+      </main>
+    </div>
+  `;
+}
+
+function loadDashboardData() {
+  callServer('getTeacherDashboard', appState.teacher.dataSource)
+    .then(res => {
+      if (res.success) {
+        appState.teacher.dashboardData = res.data;
+        renderApp();
+      } else {
+        alert(res.message);
+      }
+    });
+}
+
+function switchDataSource(source) {
+  appState.teacher.dataSource = source;
+  loadDashboardData();
+}
+
+function promptGenerateSynthetic() {
+  if (confirm('가상 학생 60명의 데이터를 생성하시겠습니까?\n주의: 가상 DB(EcoMoral_Synthetic_DB)에만 반영됩니다.')) {
+    callServer('generateSyntheticData', 60, 'OVERWRITE')
+      .then(res => {
+        alert(res.message);
+        loadDashboardData();
+      });
+  }
+}
+
+function downloadCsv() {
+  callServer('exportCsv', appState.teacher.dataSource)
+    .then(res => {
+      if (res.success) {
+        const blob = new Blob([res.content], { type: 'text/csv;charset=utf-8;' });
+        const link = document.createElement('a');
+        link.href = URL.createObjectURL(blob);
+        link.download = res.filename;
+        link.click();
+      } else {
+        alert(res.message);
+      }
+    });
+}
+
+function logoutTeacher() {
+  appState.teacher.authenticated = false;
+  appState.view = 'ROLE_SELECT';
+  renderApp();
+}
+</script>

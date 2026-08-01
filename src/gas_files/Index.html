@@ -1,0 +1,28 @@
+<!DOCTYPE html>
+<html lang="ko">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <title>EcoMoral Lab - 반응형 환경 도덕성 학습 랩</title>
+
+  <!-- Tailwind CSS CDN -->
+  <script src="https://cdn.tailwindcss.com"></script>
+
+  <!-- Custom Stylesheet Partial -->
+  <?!= include('Stylesheet'); ?>
+</head>
+<body class="bg-slate-50 text-slate-800 antialiased selection:bg-emerald-100 selection:text-emerald-800">
+
+  <!-- Root Application Container -->
+  <div id="app-root" class="min-h-screen">
+    <!-- Rendered dynamically by JavaScript.html -->
+    <div class="flex items-center justify-center min-h-screen text-slate-400 text-sm">
+      EcoMoral Lab 로딩 중...
+    </div>
+  </div>
+
+  <!-- Client Script Partial -->
+  <?!= include('JavaScript'); ?>
+
+</body>
+</html>

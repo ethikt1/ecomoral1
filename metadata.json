@@ -1,0 +1,6 @@
+{
+  "name": "EcoMoral Lab - 환경 도덕성 학습 플랫폼",
+  "description": "Rest의 도덕적 행동 4구성요소를 진단하고 맞춤형 환경 도덕성 학습을 제공하는 반응형 웹앱",
+  "requestFramePermissions": [],
+  "majorCapabilities": ["MAJOR_CAPABILITY_SERVER_SIDE_GEMINI_API"]
+}
