@@ -1,13 +1,14 @@
-import React, { useState, useEffect } from 'react';
-import { Navbar } from './components/Navbar';
+import React, { useState } from 'react';
+import { Navbar, TabType } from './components/Navbar';
 import { SimulatorView } from './components/SimulatorView';
+import { TeacherDashboardView } from './components/TeacherDashboardView';
 import { CodeExporterView } from './components/CodeExporterView';
 import { DeploymentGuideView } from './components/DeploymentGuideView';
 import { ApiSettingsView } from './components/ApiSettingsView';
 import { cleanGoogleScriptUrl } from './utils/urlHelper';
 
 export default function App() {
-  const [activeTab, setActiveTab] = useState<'simulator' | 'code' | 'guide' | 'settings'>('simulator');
+  const [activeTab, setActiveTab] = useState<TabType>('simulator');
   
   // Persist GAS WebApp URL and Live API state in localStorage
   const [webAppUrl, setWebAppUrlState] = useState<string>(() => {
@@ -56,6 +57,10 @@ export default function App() {
       <main className="flex-1">
         {activeTab === 'simulator' && (
           <SimulatorView webAppUrl={webAppUrl} useLiveApi={useLiveApi} />
+        )}
+
+        {activeTab === 'teacher' && (
+          <TeacherDashboardView />
         )}
 
         {activeTab === 'code' && (
