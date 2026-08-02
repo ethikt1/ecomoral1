@@ -811,41 +811,127 @@ export const SimulatorView: React.FC<SimulatorViewProps> = ({ webAppUrl, useLive
           {/* Step 3: Pre Assessment */}
           {student.step === 3 && (
             <div className="bg-white border border-[#D1DBCF] rounded-2xl p-6 shadow-xs">
-              <h2 className="text-lg font-bold text-[#2C3E2D] mb-1">사전 환경 도덕성 진단</h2>
-              <p className="text-xs text-[#6B7A6B] mb-6">12개 문항에 솔직하게 응답해주세요. (1점: 전혀 그렇지 않다 ~ 5점: 매우 그렇다)</p>
+              <div className="mb-6">
+                <span className="text-[11px] font-bold text-[#344E41] bg-[#E8F0E6] px-2.5 py-1 rounded-full border border-[#D1DBCF]">
+                  사전 환경 도덕성 진단 (총 28문항)
+                </span>
+                <h2 className="text-lg font-bold text-[#2C3E2D] mt-2 mb-1">환경 도덕성 사전 진단 설문</h2>
+                <p className="text-xs text-[#6B7A6B] leading-relaxed">
+                  본 설문은 환경 교육 전 학생의 환경 도덕성(민감성, 판단, 동기화, 행동)을 알아보기 위한 검사입니다. 솔직하게 자신의 생각과 행동을 표시해주세요.
+                </p>
+              </div>
 
-              <form onSubmit={handleStep3Submit} className="space-y-6">
-                {ASSESSMENT_QUESTIONS.map((q, idx) => (
-                  <div key={q.id} className="border-b border-[#E0E7DE] pb-4">
-                    <span className="text-[10px] font-bold text-[#2C3E2D] bg-[#E8F0E6] px-2 py-0.5 rounded">
-                      Q{idx + 1}
-                    </span>
-                    <p className="text-xs font-semibold text-[#2C3E2D] my-2 leading-snug">{q.text}</p>
-                    <div className="grid grid-cols-5 gap-1.5 text-center">
-                      {[1, 2, 3, 4, 5].map((score) => (
-                        <label
-                          key={score}
-                          className={`cursor-pointer border rounded-lg py-2 transition-all flex flex-col items-center hover:bg-[#E8F0E6] ${
-                            student.preAnswers[q.id] === score ? 'border-[#344E41] bg-[#E8F0E6] font-bold text-[#2C3E2D]' : 'border-[#D1DBCF] text-[#6B7A6B]'
-                          }`}
-                        >
-                          <input
-                            type="radio"
-                            name={`q_${q.id}`}
-                            value={score}
-                            checked={student.preAnswers[q.id] === score}
-                            onChange={() => setStudent({
-                              ...student,
-                              preAnswers: { ...student.preAnswers, [q.id]: score }
-                            })}
-                            className="sr-only"
-                          />
-                          <span className="text-xs">{score}점</span>
-                        </label>
-                      ))}
+              <form onSubmit={handleStep3Submit} className="space-y-8">
+                {/* Part A: Attitude & Thoughts (Q1 - Q20) */}
+                <div className="space-y-6">
+                  <div className="bg-[#F8F9F5] p-3.5 rounded-xl border border-[#D1DBCF] flex items-center gap-2">
+                    <Sparkles className="w-4 h-4 text-[#5D7A5D]" />
+                    <div>
+                      <h3 className="text-xs font-bold text-[#2C3E2D]">파트 A: 환경에 대한 생각 및 태도 (1번~20번)</h3>
+                      <p className="text-[11px] text-[#6B7A6B]">자신의 평소 생각이나 태도와 가장 일치하는 항목(1점~5점)을 선택해주세요.</p>
                     </div>
                   </div>
-                ))}
+
+                  {ASSESSMENT_QUESTIONS.filter(q => q.section === 'attitude' || !q.section).map((q) => (
+                    <div key={q.id} className="border-b border-[#E0E7DE] pb-4 space-y-2">
+                      <div className="flex items-center gap-2">
+                        <span className="text-[11px] font-extrabold text-[#2C3E2D] bg-[#E8F0E6] px-2 py-0.5 rounded border border-[#D1DBCF]">
+                          문항 {q.id}
+                        </span>
+                      </div>
+                      <p className="text-xs font-semibold text-[#2C3E2D] leading-relaxed">{q.text}</p>
+                      
+                      <div className="grid grid-cols-5 gap-1.5 text-center pt-1">
+                        {[
+                          { score: 1, label: '전혀 그렇지 않다' },
+                          { score: 2, label: '그렇지 않은 편이다' },
+                          { score: 3, label: '보통이다' },
+                          { score: 4, label: '그런 편이다' },
+                          { score: 5, label: '매우 그렇다' }
+                        ].map((item) => (
+                          <label
+                            key={item.score}
+                            className={`cursor-pointer border rounded-xl py-2 px-1 transition-all flex flex-col items-center justify-between hover:bg-[#E8F0E6] ${
+                              student.preAnswers[q.id] === item.score
+                                ? 'border-[#344E41] bg-[#E8F0E6] font-bold text-[#2C3E2D] shadow-2xs ring-1 ring-[#344E41]'
+                                : 'border-[#D1DBCF] text-[#6B7A6B]'
+                            }`}
+                          >
+                            <input
+                              type="radio"
+                              name={`q_${q.id}`}
+                              value={item.score}
+                              checked={student.preAnswers[q.id] === item.score}
+                              onChange={() => setStudent({
+                                ...student,
+                                preAnswers: { ...student.preAnswers, [q.id]: item.score }
+                              })}
+                              className="sr-only"
+                            />
+                            <span className="text-[11px] font-bold">{item.score}점</span>
+                            <span className="text-[9px] mt-0.5 text-[#6B7A6B] hidden sm:inline">{item.label}</span>
+                          </label>
+                        ))}
+                      </div>
+                    </div>
+                  ))}
+                </div>
+
+                {/* Part B: Recent 7 Days Actual Behavior (Q21 - Q28) */}
+                <div className="space-y-6 pt-4 border-t-2 border-[#D1DBCF]">
+                  <div className="bg-[#E8F0E6] p-3.5 rounded-xl border border-[#D1DBCF] flex items-center gap-2">
+                    <CheckCircle2 className="w-4 h-4 text-[#5D7A5D]" />
+                    <div>
+                      <h3 className="text-xs font-bold text-[#2C3E2D]">파트 B: 최근 7일 동안의 실제 행동 (21번~28번)</h3>
+                      <p className="text-[11px] text-[#344E41]">최근 7일간 자신이 실제로 이행한 구체적 행동 경험을 선택해 주세요.</p>
+                    </div>
+                  </div>
+
+                  {ASSESSMENT_QUESTIONS.filter(q => q.section === 'actual_behavior').map((q) => (
+                    <div key={q.id} className="border-b border-[#E0E7DE] pb-4 space-y-2">
+                      <div className="flex items-center gap-2">
+                        <span className="text-[11px] font-extrabold text-[#344E41] bg-emerald-100 px-2 py-0.5 rounded border border-emerald-200">
+                          문항 {q.id}
+                        </span>
+                        <span className="text-[10px] text-[#6B7A6B] font-medium">최근 7일간의 실제 행동</span>
+                      </div>
+                      <p className="text-xs font-bold text-[#2C3E2D] leading-relaxed">{q.text}</p>
+                      
+                      <div className="space-y-1.5 pt-1">
+                        {q.options?.map((opt) => (
+                          <label
+                            key={opt.value}
+                            className={`cursor-pointer border rounded-xl p-2.5 transition-all flex items-center gap-2.5 hover:bg-[#F0F4EF] ${
+                              student.preAnswers[q.id] === opt.value
+                                ? opt.isNoOpportunity
+                                  ? 'border-amber-400 bg-amber-50 text-amber-900 font-bold ring-1 ring-amber-400'
+                                  : 'border-[#344E41] bg-[#E8F0E6] font-bold text-[#2C3E2D] shadow-2xs ring-1 ring-[#344E41]'
+                                : 'border-[#D1DBCF] text-[#4A5D4E]'
+                            }`}
+                          >
+                            <input
+                              type="radio"
+                              name={`q_${q.id}`}
+                              value={opt.value}
+                              checked={student.preAnswers[q.id] === opt.value}
+                              onChange={() => setStudent({
+                                ...student,
+                                preAnswers: { ...student.preAnswers, [q.id]: opt.value }
+                              })}
+                              className="accent-[#344E41]"
+                            />
+                            <span className="text-xs">{opt.label}</span>
+                            {opt.isNoOpportunity && (
+                              <span className="text-[10px] text-amber-700 bg-amber-100 px-1.5 py-0.5 rounded ml-auto font-medium">
+                                (기회 없었음)
+                              </span>
+                            )}
+                          </label>
+                        ))}
+                      </div>
+                    </div>
+                  ))}
+                </div>
 
                 {stepError && (
                   <div className="p-3 bg-red-50 border border-red-200 text-red-700 text-xs rounded-xl flex items-center gap-2">
@@ -1186,41 +1272,127 @@ export const SimulatorView: React.FC<SimulatorViewProps> = ({ webAppUrl, useLive
           {/* Step 8: Post Assessment */}
           {student.step === 8 && (
             <div className="bg-white border border-[#D1DBCF] rounded-2xl p-6 shadow-xs">
-              <h2 className="text-lg font-bold text-[#2C3E2D] mb-1">사후 환경 도덕성 진단</h2>
-              <p className="text-xs text-[#6B7A6B] mb-6">학습 활동 후 변화된 나의 인식에 대해 솔직히 응답해 주세요.</p>
+              <div className="mb-6">
+                <span className="text-[11px] font-bold text-[#344E41] bg-[#E8F0E6] px-2.5 py-1 rounded-full border border-[#D1DBCF]">
+                  사후 환경 도덕성 진단 (총 28문항)
+                </span>
+                <h2 className="text-lg font-bold text-[#2C3E2D] mt-2 mb-1">환경 도덕성 사후 진단 설문</h2>
+                <p className="text-xs text-[#6B7A6B] leading-relaxed">
+                  교육 프로그램 참여 후 변화된 자신의 환경 도덕성(민감성, 판단, 동기화, 행동)을 측정하기 위한 설문입니다. 솔직하게 자신의 생각과 행동을 표시해주세요.
+                </p>
+              </div>
 
-              <form onSubmit={handleStep8Submit} className="space-y-6">
-                {ASSESSMENT_QUESTIONS.map((q, idx) => (
-                  <div key={q.id} className="border-b border-[#E0E7DE] pb-4">
-                    <span className="text-[10px] font-bold text-[#2C3E2D] bg-[#E8F0E6] px-2 py-0.5 rounded">
-                      Q{idx + 1}
-                    </span>
-                    <p className="text-xs font-semibold text-[#2C3E2D] my-2 leading-snug">{q.text}</p>
-                    <div className="grid grid-cols-5 gap-1.5 text-center">
-                      {[1, 2, 3, 4, 5].map((score) => (
-                        <label
-                          key={score}
-                          className={`cursor-pointer border rounded-lg py-2 transition-all flex flex-col items-center hover:bg-[#E8F0E6] ${
-                            student.postAnswers[q.id] === score ? 'border-[#344E41] bg-[#E8F0E6] font-bold text-[#2C3E2D]' : 'border-[#D1DBCF] text-[#6B7A6B]'
-                          }`}
-                        >
-                          <input
-                            type="radio"
-                            name={`post_q_${q.id}`}
-                            value={score}
-                            checked={student.postAnswers[q.id] === score}
-                            onChange={() => setStudent({
-                              ...student,
-                              postAnswers: { ...student.postAnswers, [q.id]: score }
-                            })}
-                            className="sr-only"
-                          />
-                          <span className="text-xs">{score}점</span>
-                        </label>
-                      ))}
+              <form onSubmit={handleStep8Submit} className="space-y-8">
+                {/* Part A: Attitude & Thoughts (Q1 - Q20) */}
+                <div className="space-y-6">
+                  <div className="bg-[#F8F9F5] p-3.5 rounded-xl border border-[#D1DBCF] flex items-center gap-2">
+                    <Sparkles className="w-4 h-4 text-[#5D7A5D]" />
+                    <div>
+                      <h3 className="text-xs font-bold text-[#2C3E2D]">파트 A: 환경에 대한 생각 및 태도 (1번~20번)</h3>
+                      <p className="text-[11px] text-[#6B7A6B]">현재 자신의 생각이나 태도와 가장 일치하는 항목(1점~5점)을 선택해주세요.</p>
                     </div>
                   </div>
-                ))}
+
+                  {ASSESSMENT_QUESTIONS.filter(q => q.section === 'attitude' || !q.section).map((q) => (
+                    <div key={q.id} className="border-b border-[#E0E7DE] pb-4 space-y-2">
+                      <div className="flex items-center gap-2">
+                        <span className="text-[11px] font-extrabold text-[#2C3E2D] bg-[#E8F0E6] px-2 py-0.5 rounded border border-[#D1DBCF]">
+                          문항 {q.id}
+                        </span>
+                      </div>
+                      <p className="text-xs font-semibold text-[#2C3E2D] leading-relaxed">{q.text}</p>
+                      
+                      <div className="grid grid-cols-5 gap-1.5 text-center pt-1">
+                        {[
+                          { score: 1, label: '전혀 그렇지 않다' },
+                          { score: 2, label: '그렇지 않은 편이다' },
+                          { score: 3, label: '보통이다' },
+                          { score: 4, label: '그런 편이다' },
+                          { score: 5, label: '매우 그렇다' }
+                        ].map((item) => (
+                          <label
+                            key={item.score}
+                            className={`cursor-pointer border rounded-xl py-2 px-1 transition-all flex flex-col items-center justify-between hover:bg-[#E8F0E6] ${
+                              student.postAnswers[q.id] === item.score
+                                ? 'border-[#344E41] bg-[#E8F0E6] font-bold text-[#2C3E2D] shadow-2xs ring-1 ring-[#344E41]'
+                                : 'border-[#D1DBCF] text-[#6B7A6B]'
+                            }`}
+                          >
+                            <input
+                              type="radio"
+                              name={`post_q_${q.id}`}
+                              value={item.score}
+                              checked={student.postAnswers[q.id] === item.score}
+                              onChange={() => setStudent({
+                                ...student,
+                                postAnswers: { ...student.postAnswers, [q.id]: item.score }
+                              })}
+                              className="sr-only"
+                            />
+                            <span className="text-[11px] font-bold">{item.score}점</span>
+                            <span className="text-[9px] mt-0.5 text-[#6B7A6B] hidden sm:inline">{item.label}</span>
+                          </label>
+                        ))}
+                      </div>
+                    </div>
+                  ))}
+                </div>
+
+                {/* Part B: Recent 7 Days Actual Behavior (Q21 - Q28) */}
+                <div className="space-y-6 pt-4 border-t-2 border-[#D1DBCF]">
+                  <div className="bg-[#E8F0E6] p-3.5 rounded-xl border border-[#D1DBCF] flex items-center gap-2">
+                    <CheckCircle2 className="w-4 h-4 text-[#5D7A5D]" />
+                    <div>
+                      <h3 className="text-xs font-bold text-[#2C3E2D]">파트 B: 최근 7일 동안의 실제 행동 (21번~28번)</h3>
+                      <p className="text-[11px] text-[#344E41]">최근 7일간 자신이 실제로 이행한 구체적 행동 경험을 선택해 주세요.</p>
+                    </div>
+                  </div>
+
+                  {ASSESSMENT_QUESTIONS.filter(q => q.section === 'actual_behavior').map((q) => (
+                    <div key={q.id} className="border-b border-[#E0E7DE] pb-4 space-y-2">
+                      <div className="flex items-center gap-2">
+                        <span className="text-[11px] font-extrabold text-[#344E41] bg-emerald-100 px-2 py-0.5 rounded border border-emerald-200">
+                          문항 {q.id}
+                        </span>
+                        <span className="text-[10px] text-[#6B7A6B] font-medium">최근 7일간의 실제 행동</span>
+                      </div>
+                      <p className="text-xs font-bold text-[#2C3E2D] leading-relaxed">{q.text}</p>
+                      
+                      <div className="space-y-1.5 pt-1">
+                        {q.options?.map((opt) => (
+                          <label
+                            key={opt.value}
+                            className={`cursor-pointer border rounded-xl p-2.5 transition-all flex items-center gap-2.5 hover:bg-[#F0F4EF] ${
+                              student.postAnswers[q.id] === opt.value
+                                ? opt.isNoOpportunity
+                                  ? 'border-amber-400 bg-amber-50 text-amber-900 font-bold ring-1 ring-amber-400'
+                                  : 'border-[#344E41] bg-[#E8F0E6] font-bold text-[#2C3E2D] shadow-2xs ring-1 ring-[#344E41]'
+                                : 'border-[#D1DBCF] text-[#4A5D4E]'
+                            }`}
+                          >
+                            <input
+                              type="radio"
+                              name={`post_q_${q.id}`}
+                              value={opt.value}
+                              checked={student.postAnswers[q.id] === opt.value}
+                              onChange={() => setStudent({
+                                ...student,
+                                postAnswers: { ...student.postAnswers, [q.id]: opt.value }
+                              })}
+                              className="accent-[#344E41]"
+                            />
+                            <span className="text-xs">{opt.label}</span>
+                            {opt.isNoOpportunity && (
+                              <span className="text-[10px] text-amber-700 bg-amber-100 px-1.5 py-0.5 rounded ml-auto font-medium">
+                                (기회 없었음)
+                              </span>
+                            )}
+                          </label>
+                        ))}
+                      </div>
+                    </div>
+                  ))}
+                </div>
 
                 {stepError && (
                   <div className="p-3 bg-red-50 border border-red-200 text-red-700 text-xs rounded-xl flex items-center gap-2">

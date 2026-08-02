@@ -4,11 +4,21 @@
 
 export type RestComponent = 'sensitivity' | 'judgment' | 'motivation' | 'action';
 
+export interface AssessmentQuestionOption {
+  label: string;
+  value: number;
+  isNoOpportunity?: boolean; // 기회 없었음 옵션 여부
+}
+
 export interface AssessmentQuestion {
   id: number;
   component: RestComponent;
   componentLabel: string;
   text: string;
+  isReverse?: boolean;
+  section?: 'attitude' | 'actual_behavior';
+  options?: AssessmentQuestionOption[];
+  subLabel?: string;
 }
 
 export interface ComponentScores {
