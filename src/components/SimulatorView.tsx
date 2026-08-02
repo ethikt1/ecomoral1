@@ -65,11 +65,18 @@ export const SimulatorView: React.FC<SimulatorViewProps> = ({ webAppUrl, useLive
       if (saved) {
         const parsed = JSON.parse(saved);
         if (parsed && (parsed.student_code || parsed.student_number)) {
+          if (parsed.step === 2) parsed.step = 3;
           setStudent(parsed);
         }
       }
     } catch (e) {}
   }, []);
+
+  useEffect(() => {
+    if (student.step === 2) {
+      setStudent(prev => ({ ...prev, step: 3 }));
+    }
+  }, [student.step]);
 
   const saveStudentSession = (updated: StudentSession) => {
     setStudent(updated);
@@ -156,7 +163,8 @@ export const SimulatorView: React.FC<SimulatorViewProps> = ({ webAppUrl, useLive
   const goToPrevStep = () => {
     setStepError('');
     if (student.step > 1) {
-      const prevStep = student.step - 1;
+      let prevStep = student.step - 1;
+      if (prevStep === 2) prevStep = 1;
       const updated = { ...student, step: prevStep };
       setStudent(updated);
       saveStudentSession(updated);
@@ -294,7 +302,7 @@ export const SimulatorView: React.FC<SimulatorViewProps> = ({ webAppUrl, useLive
       student_code: codeCombined,
       submission_id: subId,
       started_at: new Date().toLocaleString(),
-      step: 2
+      step: 3
     };
     saveStudentSession(updated);
   };
@@ -769,42 +777,10 @@ export const SimulatorView: React.FC<SimulatorViewProps> = ({ webAppUrl, useLive
                   type="submit"
                   className="w-full bg-[#344E41] hover:bg-[#2A3F34] text-white font-bold py-3.5 rounded-xl shadow-2xs transition-all flex items-center justify-center gap-1"
                 >
-                  <span>다음 단계로 (딜레마 확인)</span>
-                  <ArrowRight className="w-4 h-4" />
-                </button>
-              </form>
-            </div>
-          )}
-
-          {/* Step 2: Dilemma */}
-          {student.step === 2 && (
-            <div className="bg-white border border-[#D1DBCF] rounded-2xl p-6 shadow-xs space-y-4">
-              <span className="inline-block px-2.5 py-1 bg-[#E8F0E6] text-[#2C3E2D] text-xs font-bold rounded-full">
-                환경 딜레마 확인
-              </span>
-              <h2 className="text-lg font-bold text-[#2C3E2D]">{DEFAULT_SCENARIO.title}</h2>
-              <div className="bg-[#F8F9F5] border border-[#E0E7DE] rounded-xl p-4 text-xs text-[#344E41] leading-relaxed space-y-2">
-                <p>{DEFAULT_SCENARIO.description}</p>
-              </div>
-
-              <div className="flex gap-2 pt-2">
-                <button
-                  type="button"
-                  onClick={goToPrevStep}
-                  className="w-1/3 bg-[#F0F4EF] hover:bg-[#E8F0E6] text-[#344E41] font-semibold py-3.5 rounded-xl border border-[#D1DBCF] transition-all flex items-center justify-center gap-1 text-xs"
-                >
-                  <ArrowLeft className="w-4 h-4" />
-                  <span>이전 단계</span>
-                </button>
-                <button
-                  type="button"
-                  onClick={() => goToNextStep(3)}
-                  className="w-2/3 bg-[#344E41] hover:bg-[#2A3F34] text-white font-bold py-3.5 rounded-xl shadow-2xs transition-all flex items-center justify-center gap-1 text-xs"
-                >
                   <span>사전 진단 설문 시작하기</span>
                   <ArrowRight className="w-4 h-4" />
                 </button>
-              </div>
+              </form>
             </div>
           )}
 
